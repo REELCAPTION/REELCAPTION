@@ -13,7 +13,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Star, Copy, RotateCcw, Save, MousePointerClick, Instagram, Info, AlertTriangle, X, CreditCard, ExternalLink, Hash, Settings2, ChevronDown, ChevronUp, MessageSquare, Heart, Send } from 'lucide-react';
+import { Sparkles, Star, Copy, RotateCcw, Save, Instagram, Info, AlertTriangle, X, CreditCard, ExternalLink, Hash, Settings2, ChevronDown, ChevronUp, MessageSquare, Heart, Send } from 'lucide-react';
 import { Database } from '@/types_db';
 import Link from 'next/link';
 
@@ -61,6 +61,18 @@ const CREDIT_COSTS = { /* ... CREDIT_COSTS object ... */
     premium: 2,
 };
 
+// Define Payload Type for API call
+interface GeneratePayload {
+    description: string;
+    contentType: 'caption' | 'bio';
+    tone: string;
+    includeEmojis: boolean;
+    credits: number;
+    captionLength?: string; // Only for caption
+    includeHashtags?: boolean; // Only for caption
+}
+
+
 export default function InstagramCaptionGeneratorPage() {
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
@@ -107,9 +119,10 @@ export default function InstagramCaptionGeneratorPage() {
                 } else if (data && typeof data.credits === 'number') {
                     setCurrentCredits(data.credits); console.log(`[Client] Credits loaded: ${data.credits}`);
                 } else { throw new Error('Could not retrieve valid credit information.'); }
-            } catch (err: any) {
+            } catch (err: unknown) { // Corrected from any
                 console.error("[Client] Error fetching credits:", err);
-                const message = err.message || 'Could not load user credits.';
+                // Safely access error message
+                const message = err instanceof Error ? err.message : 'An unknown error occurred';
                 setError(message); setCurrentCredits(null);
                 if (message === 'Not authenticated') { router.push('/login'); }
             } finally { setIsLoadingCredits(false); }
@@ -140,8 +153,19 @@ export default function InstagramCaptionGeneratorPage() {
         if (currentCredits < creditsToUse) { setShowOutOfCreditsAlert(true); return; }
         setIsGenerating(true); setGeneratedContent(''); setHashtags([]);
         console.log(`[Client] Starting ${contentType} generation. Cost: ${creditsToUse}, Mode: ${activeTab}`);
-        const payload: any = { description: description.trim(), contentType, tone, includeEmojis, credits: creditsToUse };
-        if (contentType === 'caption') { payload.captionLength = captionLength; payload.includeHashtags = includeHashtags; }
+
+        const payload: GeneratePayload = { // Corrected from any
+            description: description.trim(),
+            contentType,
+            tone,
+            includeEmojis,
+            credits: creditsToUse
+        };
+        if (contentType === 'caption') {
+            payload.captionLength = captionLength;
+            payload.includeHashtags = includeHashtags;
+        }
+
         try {
             const response = await fetch('/api/caption', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const data = await response.json();
@@ -155,10 +179,13 @@ export default function InstagramCaptionGeneratorPage() {
                 if (data.content) { setGeneratedContent(data.content); } else { console.warn("API response missing 'content'."); setError("No content returned."); setGeneratedContent(''); }
                 if (contentType === 'caption' && includeHashtags && data.hashtags && Array.isArray(data.hashtags)) { setHashtags(data.hashtags); } else { setHashtags([]); }
                 if (typeof data.remainingCredits === 'number') { setCurrentCredits(data.remainingCredits); console.log(`Credits updated to: ${data.remainingCredits}`); }
-                else { console.warn("API missing remainingCredits. Deducting locally."); setCurrentCredits(currentCredits - creditsToUse); }
+                else { console.warn("API missing remainingCredits. Deducting locally."); if (currentCredits !== null) setCurrentCredits(currentCredits - creditsToUse); } // Added null check for currentCredits
             }
-        } catch (err: any) {
-            console.error('[Client] Error in handleGenerate:', err); if (!showOutOfCreditsAlert) { setError(err.message || 'Generation failed.'); }
+        } catch (err: unknown) { // Corrected from any
+            console.error('[Client] Error in handleGenerate:', err);
+             // Safely access error message
+            const message = err instanceof Error ? err.message : 'An unknown error occurred';
+            if (!showOutOfCreditsAlert) { setError(message || 'Generation failed.'); }
             setGeneratedContent(''); setHashtags([]);
         } finally { setIsGenerating(false); console.log("[Client] Generation finished."); }
     };
@@ -231,7 +258,7 @@ export default function InstagramCaptionGeneratorPage() {
                     {/* Description Input */}
                     <div className="space-y-2">
                     <Label htmlFor='description-input' className="text-sm font-medium text-gray-300 flex items-center gap-1.5">{contentType === 'caption' ? 'Describe your Post/Reel' : 'Describe your Profile/Brand'} <span className="text-red-400">*</span></Label>
-                    <Textarea id='description-input' placeholder={contentType === 'caption' ? "e.g., 'Photo of me hiking...'" : "e.g., 'Fitness coach...'" }
+                    <Textarea id='description-input' placeholder={contentType === 'caption' ? "e.g., 'Photo of me hiking...'" : "e.g., 'Fitness coach...'" } // Corrected placeholder
                         className="bg-gray-950 border-gray-700 h-32 md:h-36 text-base p-4 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 rounded-md resize-none"
                         value={description} onChange={(e) => setDescription(e.target.value)} maxLength={400} required aria-required="true" />
                     </div>
@@ -273,7 +300,7 @@ export default function InstagramCaptionGeneratorPage() {
                     <div className="bg-gradient-to-br from-black via-gray-950 to-black rounded-xl p-4 md:p-6 min-h-[20rem] md:min-h-[24rem] border border-gray-700 flex flex-col shadow-inner relative overflow-hidden">
                         {isGenerating && ( <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 md:p-8 bg-black/70 backdrop-blur-sm z-10 rounded-xl"><Instagram className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-4 text-purple-400 animate-pulse" /><p className="text-lg text-white font-medium animate-pulse">Generating {contentType}...</p><p className="text-sm text-gray-400 animate-pulse">AI is working its magic ✨</p></div> )}
                         {!isGenerating && generatedContent ? ( <div className="flex items-start gap-3 flex-grow"> <div className="mt-1 h-10 w-10 md:h-11 md:w-11 rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-orange-400 flex-shrink-0"></div> <div className="flex-1 min-w-0"> <div className="flex items-center justify-between mb-1"><span className="font-semibold text-white text-sm md:text-[15px] truncate">YourUsername</span> {contentType === 'caption' && ( <span className="text-gray-500 text-xs flex-shrink-0">· 1m</span> )} {contentType === 'bio' && ( <Button variant="outline" size="sm" /* Changed from "xs" */ className="h-7 px-2.5 text-xs border-gray-600 hover:bg-gray-700/50">Edit Profile</Button> /* Adjusted classes for 'sm' */ )}</div> {contentType === 'bio' && ( <div className="flex items-center gap-4 my-2 text-center"><div><span className="font-semibold text-white text-sm">105</span> <span className="text-xs text-gray-400 block">Posts</span></div><div><span className="font-semibold text-white text-sm">2.1k</span> <span className="text-xs text-gray-400 block">Followers</span></div><div><span className="font-semibold text-white text-sm">342</span> <span className="text-xs text-gray-400 block">Following</span></div></div> )} <div className="whitespace-pre-wrap text-sm md:text-[15px] leading-relaxed mt-1 text-gray-100 break-words">{generatedContent}</div> {contentType === 'caption' && hashtags.length > 0 && ( <div className="mt-3 flex flex-wrap gap-1.5">{hashtags.map((tag, index) => ( <span key={index} className="text-blue-400 hover:underline text-sm cursor-pointer">{tag}</span> ))}</div> )} {contentType === 'caption' && ( <div className="flex items-center justify-between text-gray-500 mt-4 pt-3 border-t border-gray-800/60"><div className="flex items-center gap-3"><Heart size={22} className="hover:text-red-500 transition-colors cursor-pointer"/><MessageSquare size={22} className="hover:text-white transition-colors cursor-pointer -mt-0.5 transform scale-x-[-1]"/><Send size={22} className="hover:text-white transition-colors cursor-pointer -mt-0.5"/></div><Save size={22} className="hover:text-white transition-colors cursor-pointer"/></div> )}</div></div> )
-                        : ( !isGenerating && ( <div className="flex-grow flex flex-col items-center justify-center text-gray-600 text-center p-4 md:p-8"><Instagram className="h-12 w-12 md:h-16 md:w-16 mb-5 text-gray-700 opacity-80" /><p className="text-lg md:text-xl mb-2 text-gray-400 font-medium">Your {contentType} preview appears here</p><p className="text-gray-500 text-sm md:text-base max-w-xs mx-auto">Configure the options on the left and click "Generate".</p></div> ) )}
+                        : ( !isGenerating && ( <div className="flex-grow flex flex-col items-center justify-center text-gray-600 text-center p-4 md:p-8"><Instagram className="h-12 w-12 md:h-16 md:w-16 mb-5 text-gray-700 opacity-80" /><p className="text-lg md:text-xl mb-2 text-gray-400 font-medium">Your {contentType} preview appears here</p><p className="text-gray-500 text-sm md:text-base max-w-xs mx-auto">Configure the options on the left and click &quot;Generate&quot;.</p></div> ) )}
                     </div>
                     {contentType === 'caption' && hashtags.length > 0 && !isGenerating && (
                         <div className="pt-4 mt-4 border-t border-gray-800">

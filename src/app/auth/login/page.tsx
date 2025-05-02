@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -40,10 +39,12 @@ export default function Login() {
         throw error;
       }
       
-      router.push('/post-login');
-      router.refresh();
-    } catch (error: any) {
-      setError(error.message || 'An error occurred during sign in');
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred during sign in');
+      }
     } finally {
       setLoading(false);
     }
@@ -64,8 +65,8 @@ export default function Login() {
       if (error) {
         throw error;
       }
-    } catch (error: any) {
-      setError(error.message || 'An error occurred during Google sign in');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred during Google sign in');
       setLoading(false);
     }
   };
@@ -181,7 +182,7 @@ export default function Login() {
         </div>
 
         <div className="text-center mt-4 text-sm text-gray-400">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{''}
           <Link href="/auth/signup" className="font-medium text-indigo-400 hover:text-indigo-300">
             Sign up
           </Link>

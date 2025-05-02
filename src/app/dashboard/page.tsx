@@ -5,7 +5,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiChevronLeft, FiChevronRight, FiUser, FiLogOut, FiSettings } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiUser, FiLogOut } from 'react-icons/fi';
 
 type Profile = {
   id: string;
@@ -24,6 +24,13 @@ type ContentTool = {
   path: string;
   credits: number;
   color: string;
+};
+
+type UserActivity = {
+  id: string;
+  user_id: string;
+  description: string;
+  created_at: string;
 };
 
 export default function Dashboard() {
@@ -118,7 +125,7 @@ export default function Dashboard() {
     }
   ];
 
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<UserActivity[]>([]);
 
   // Handle click outside to close profile menu
   useEffect(() => {
@@ -461,13 +468,13 @@ export default function Dashboard() {
 
               {/* Tool Navigation Indicator */}
               <div className="flex justify-center mt-6 space-x-2">
-                {contentTools.map((_, index) => (
+                {contentTools.map((_, idx) => (
                   <motion.div
-                    key={index}
-                    className={`h-1.5 rounded-full ${index === activeToolIndex ? 'w-6 bg-indigo-500' : 'w-2 bg-gray-700'}`}
+                    key={idx}
+                    className={`h-1.5 rounded-full ${idx === activeToolIndex ? 'w-6 bg-indigo-500' : 'w-2 bg-gray-700'}`}
                     animate={{
-                      width: index === activeToolIndex ? 24 : 8,
-                      backgroundColor: index === activeToolIndex ? '#6366f1' : '#374151'
+                      width: idx === activeToolIndex ? 24 : 8,
+                      backgroundColor: idx === activeToolIndex ? '#6366f1' : '#374151'
                     }}
                     transition={{ duration: 0.3 }}
                   />
@@ -485,7 +492,7 @@ export default function Dashboard() {
               <h2 className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-4">Trending Tools</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {contentTools.slice(0, 4).map((tool, index) => (
+                {contentTools.slice(0, 4).map((tool) => (
                   <Link href={tool.path} key={tool.id}>
                     <motion.div
                       whileHover={{ scale: 1.03, boxShadow: "0 0 15px rgba(99, 102, 241, 0.2)" }}
@@ -566,12 +573,12 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {recentActivities.map((activity, idx) => (
+                  {recentActivities.map((activity) => (
                     <motion.div
-                      key={activity.id || idx}
+                      key={activity.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: idx * 0.1 }}
+                      transition={{ duration: 0.3 }}
                       className="bg-gray-800/40 rounded-lg p-3 border border-gray-700/50 hover:border-indigo-500/30 transition-all"
                     >
                       <div className="flex items-center justify-between">

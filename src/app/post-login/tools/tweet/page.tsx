@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge'; // Although not used for output, keep for consistency if needed elsewhere
-import { Sparkles, Copy, RotateCcw, Twitter, Languages, MessageSquare, Hash, MousePointerClick, Info, AlertTriangle, X, CreditCard, ExternalLink, Star } from 'lucide-react'; // Added necessary icons
+import { Sparkles, Copy, RotateCcw, Twitter, Languages, MessageSquare, MousePointerClick, Info, AlertTriangle, X, CreditCard, ExternalLink, Star } from 'lucide-react'; // Added necessary icons
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 // Optional: import { useToast } from "@/components/ui/use-toast";
@@ -125,9 +125,10 @@ export default function TweetGeneratorPage() {
              console.warn("[Client] Profile data missing or credits field invalid.");
              throw new Error('Could not retrieve valid credit information.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) { // Changed from any to unknown
         console.error("[Client] Error fetching credits:", err);
-        const message = err.message || 'Could not load user credits.';
+        // Safely access error message
+        const message = err instanceof Error ? err.message : 'An unknown error occurred fetching credits.';
         setError(message);
         setCurrentCredits(null);
          if (message === 'Not authenticated') {
@@ -236,10 +237,12 @@ export default function TweetGeneratorPage() {
             // toast({ title: "Tweet Generated!", description: `Used ${creditsToUse} credit(s). (Local fallback)` });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) { // Changed from any to unknown
       console.error('[Client] Error in handleGenerate fetch/processing:', err);
+       // Safely access error message
+       const message = err instanceof Error ? err.message : 'An unexpected error occurred during generation.';
       if (!showOutOfCreditsAlert) {
-         setError(err.message || 'An unexpected error occurred during generation.');
+         setError(message);
       }
       // toast({ variant: "destructive", title: "Generation Failed", description: err.message });
       setGeneratedTweet('');
@@ -260,7 +263,9 @@ export default function TweetGeneratorPage() {
         })
         .catch(err => {
             console.error("[Client] Copy failed:", err);
-            setError("Failed to copy text to clipboard.");
+            // Safely access error message
+            const message = err instanceof Error ? err.message : 'An unexpected error occurred while copying.';
+            setError("Failed to copy text to clipboard: " + message); // Added message for clarity
             // toast({ variant: "destructive", title: "Copy Failed" });
         });
     };
@@ -551,7 +556,7 @@ export default function TweetGeneratorPage() {
                              className="w-full text-left p-3 bg-gray-800 hover:bg-gray-700/80 rounded-md text-sm text-gray-300 transition-colors duration-150 group"
                              title={`Use topic: ${ex.topic}`}
                          >
-                             <span className="font-medium text-gray-100 group-hover:text-white block mb-1.5">"{ex.topic}"</span>
+                             <span className="font-medium text-gray-100 group-hover:text-white block mb-1.5">&quot;{ex.topic}&quot;</span>
                               <div className="flex flex-wrap gap-1.5">
                                 {ex.hashtags?.slice(0,4).map((tag, idx) => <Badge key={idx} variant="secondary" className="text-xs bg-gray-700 group-hover:bg-gray-600 text-gray-400 group-hover:text-gray-200 px-1.5 py-0.5 font-normal">{tag}</Badge>)}
                                  {ex.hashtags && ex.hashtags.length > 4 && <Badge variant="secondary" className="text-xs bg-gray-700 text-gray-400 px-1.5 py-0.5 font-normal">...</Badge>}
@@ -675,7 +680,7 @@ export default function TweetGeneratorPage() {
                     <div className="flex-grow flex flex-col items-center justify-center text-gray-600 text-center p-4 md:p-8">
                       <Twitter className="h-12 w-12 md:h-16 md:w-16 mb-5 text-gray-700 opacity-80" />
                       <p className="text-lg md:text-xl mb-2 text-gray-400 font-medium">Your tweet draft will appear here</p>
-                      <p className="text-gray-500 text-sm md:text-base max-w-xs mx-auto">Configure the options, enter a topic, and click "Generate Tweet".</p>
+                      <p className="text-gray-500 text-sm md:text-base max-w-xs mx-auto">Configure the options, enter a topic, and click &quot;Generate Tweet&quot;.</p>
                     </div>
                   )}
                 </div>
@@ -716,7 +721,7 @@ export default function TweetGeneratorPage() {
                             className="w-full text-left p-3 bg-gray-800 hover:bg-gray-700/80 rounded-md text-sm text-gray-300 transition-colors duration-150 group"
                             title={`Use topic: ${ex.topic}`}
                         >
-                            <span className="font-medium text-gray-100 group-hover:text-white block mb-1.5">"{ex.topic}"</span>
+                            <span className="font-medium text-gray-100 group-hover:text-white block mb-1.5">&quot;{ex.topic}&quot;</span>
                              <div className="flex flex-wrap gap-1.5">
                                 {ex.hashtags?.slice(0,4).map((tag, idx) => <Badge key={idx} variant="secondary" className="text-xs bg-gray-700 group-hover:bg-gray-600 text-gray-400 group-hover:text-gray-200 px-1.5 py-0.5 font-normal">{tag}</Badge>)}
                                  {ex.hashtags && ex.hashtags.length > 4 && <Badge variant="secondary" className="text-xs bg-gray-700 text-gray-400 px-1.5 py-0.5 font-normal">...</Badge>}

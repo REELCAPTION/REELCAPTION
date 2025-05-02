@@ -198,8 +198,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<HookTitle
         } catch (error) {
             // Error could be from generateWithCohere internal catch or Promise.all failure
              let errorMessage = "AI API request failed after credit deduction.";
-             let errorDetails: unknown = error instanceof Error ? error.message : String(error);
-             let statusCode = 502; // Default Bad Gateway
+             const errorDetails: unknown = error instanceof Error ? error.message : String(error);
+             const statusCode = 502; // Default Bad Gateway
 
              // If error message contains Cohere details from the helper
              if (error instanceof Error && error.message.includes("Cohere API Error")) {

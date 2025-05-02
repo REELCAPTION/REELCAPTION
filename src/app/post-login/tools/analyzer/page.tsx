@@ -1,20 +1,20 @@
 // src/app/post-login/tools/analyzer/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react'; // Added useEffect
-import { useRouter } from 'next/navigation'; // Added useRouter
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Added Supabase client
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Star, Copy, RotateCcw, Save, PlayCircle, Target, TrendingUp, Info, AlertTriangle, X, CreditCard, ExternalLink } from 'lucide-react'; // Added required icons, removed Zap
+import { Sparkles, Star, Copy, RotateCcw, Save, PlayCircle, Target, TrendingUp, Info, AlertTriangle, X, CreditCard, ExternalLink } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 // Optional: import { useToast } from "@/components/ui/use-toast";
-import { Database } from '@/types_db'; // Added Database types
-import Link from 'next/link'; // Added Link
+import { Database } from '@/types_db';
+import Link from 'next/link';
 
 // --- Configuration Data (Keep as is) ---
 const niches = [
@@ -69,8 +69,8 @@ const CREDIT_COSTS = {
 
 
 export default function YouTubeAnalyzerPage() {
-  const router = useRouter(); // Initialize router
-  const supabase = createClientComponentClient<Database>(); // Initialize Supabase
+  const router = useRouter();
+  const supabase = createClientComponentClient<Database>();
   // Optional: const { toast } = useToast();
 
   // --- State (Original UI state + Credit state) ---
@@ -83,7 +83,7 @@ export default function YouTubeAnalyzerPage() {
   const [hookStyle, setHookStyle] = useState('question');
   const [titleStyle, setTitleStyle] = useState('howto');
   const [audienceType, setAudienceType] = useState('general');
-  const [error, setError] = useState<string | null>(null); // Changed initial state to null
+  const [error, setError] = useState<string | null>(null);
   // const userCredits = 15; // Removed hardcoded credits
 
   // --- Credit State ---
@@ -110,36 +110,43 @@ export default function YouTubeAnalyzerPage() {
           .eq('id', session.user.id)
           .single();
 
-        if (profileError) {
-           if (status === 406 || profileError.code === 'PGRST116') {
-               console.error("[Client] User profile not found ID:", session.user.id);
-               throw new Error('User profile not found. Please contact support.');
-           } else {
-               console.error("[Client] Supabase profile fetch error:", profileError);
-               throw new Error(`Failed to fetch credits: ${profileError.message}`);
-           }
-        } else if (data && typeof data.credits === 'number') {
+          if (profileError) {
+            if (status === 406 || profileError.code === "PGRST116") {
+              console.error("[Client] User profile not found ID:", session.user.id);
+              throw new Error("User profile not found. Please contact support.");
+            } else {
+              console.error("[Client] Supabase profile fetch error:", profileError);
+              throw new Error(`Failed to fetch credits: ${profileError.message}`);
+            }
+          } else if (data && typeof data.credits === "number") {
             setCurrentCredits(data.credits);
             console.log(`[Client] Credits loaded: ${data.credits}`);
-        } else {
-             console.warn("[Client] Profile data missing or credits invalid.");
-             throw new Error('Could not retrieve valid credit information.');
+          } else {
+            console.warn("[Client] Profile data missing or credits invalid.");
+            throw new Error("Could not retrieve valid credit information.");
+          }
+        } catch (err: unknown) {
+          console.error("[Client] Error fetching credits:", err);
+
+          let message = "Could not load user credits.";
+          if (err instanceof Error) {
+            message = err.message;
+          }
+
+          setError(message);
+          setCurrentCredits(null);
+
+          if (message === "Not authenticated") {
+            console.log("[Client] User not authenticated. Redirecting...");
+            router.push("/login");
+          }
+        } finally {
+          setIsLoadingCredits(false);
         }
-      } catch (err: any) {
-        console.error("[Client] Error fetching credits:", err);
-        const message = err.message || 'Could not load user credits.';
-        setError(message);
-        setCurrentCredits(null);
-         if (message === 'Not authenticated') {
-             console.log("[Client] User not authenticated. Redirecting...");
-             router.push('/login');
-         }
-      } finally {
-        setIsLoadingCredits(false);
-      }
-    };
-    fetchCredits();
-  }, [supabase, router]);
+      };
+
+      fetchCredits();
+    }, [supabase, router]);
 
   // Update required credits when tab changes
   useEffect(() => {
@@ -155,7 +162,7 @@ export default function YouTubeAnalyzerPage() {
     if (!topic || topic.trim().length === 0) {
         setError("Please enter your Video Topic first.");
         return;
-    };
+    }
     if (currentCredits === null || isLoadingCredits) {
         setError("Cannot generate: Credit information is unavailable.");
         return;
@@ -203,7 +210,9 @@ export default function YouTubeAnalyzerPage() {
             setError('Authentication error. Please log in again.');
             router.push('/login');
         } else {
-          throw new Error(data.error || `API request failed with status ${response.status}`);
+          // Handle other API errors
+          const errorMessage = data.error || `API request failed with status ${response.status}`;
+          setError(errorMessage);
         }
       } else {
         // --- Success ---
@@ -212,27 +221,32 @@ export default function YouTubeAnalyzerPage() {
         if (data.title && data.hook) {
             setGeneratedTitle(data.title);
             setGeneratedHook(data.hook);
+
+            // Update Credits on successful generation
+            if (typeof data.remainingCredits === 'number') {
+              setCurrentCredits(data.remainingCredits);
+              console.log(`[Client] Credits updated locally to: ${data.remainingCredits}`);
+            } else {
+              // This shouldn't happen if API is correct, but a fallback
+              console.warn("[Client] API success response missing remainingCredits. Deducting locally.");
+              setCurrentCredits(currentCredits - creditsToUse);
+            }
+
         } else {
             console.warn("[Client] API response missing 'title' or 'hook'.");
-            setError("Generation succeeded, but title or hook was missing.");
+            setError("Generation succeeded, but title or hook was missing from the response.");
         }
+      }
+    } catch (err: unknown) {
+      // Handle network errors or errors processing the response before `response.json()`
+      console.error('[Client] Error during generation:', err);
 
-        // Update Credits
-        if (typeof data.remainingCredits === 'number') {
-            setCurrentCredits(data.remainingCredits);
-            console.log(`[Client] Credits updated locally to: ${data.remainingCredits}`);
-        } else {
-            console.warn("[Client] API success response missing remainingCredits. Deducting locally.");
-            setCurrentCredits(currentCredits - creditsToUse); // Fallback
-        }
+      let message = 'An unexpected error occurred during generation.';
+      if (err instanceof Error) {
+        message = err.message;
       }
-    } catch (err: any) {
-      console.error('[Client] Error in handleGenerate:', err);
-      if (!showOutOfCreditsAlert) {
-         setError(err.message || 'An unexpected error occurred during generation.');
-      }
-      setGeneratedHook('');
-      setGeneratedTitle('');
+      setError(message);
+
     } finally {
       setIsGenerating(false);
       console.log("[Client] Generation process finished.");
@@ -250,8 +264,8 @@ export default function YouTubeAnalyzerPage() {
     setTopic('');
     setGeneratedHook('');
     setGeneratedTitle('');
-    setError(null); // Changed from ''
-    setShowOutOfCreditsAlert(false); // Reset alert
+    setError(null);
+    setShowOutOfCreditsAlert(false);
     // Reset other inputs? Optional
   };
 
@@ -674,7 +688,6 @@ export default function YouTubeAnalyzerPage() {
           </div> {/* End Output Column */}
         </div> {/* End Main Grid */}
       </div> {/* End Max Width Container */}
-      {/* Remove added style block */}
     </div> // End Page Root Div
   );
-}
+};

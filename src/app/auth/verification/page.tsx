@@ -14,45 +14,58 @@ export default function Verification() {
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         // If no session, redirect to login
         router.push('/auth/login');
         return;
       }
-      
+
       if (session.user.email) {
         setEmail(session.user.email);
       }
-      
+
       // If the email is already confirmed, redirect to dashboard
       if (session.user.email_confirmed_at) {
         router.push('/post-login');
         return;
       }
-      
+
       setIsLoading(false);
     };
-    
+
     checkUser();
   }, [supabase, router]);
 
   const handleResendEmail = async () => {
     setIsLoading(true);
-    
+
     try {
+      // Supabase auth.resend requires a non-null email.
+      // The component structure ensures email is loaded from session or redirected.
+      // If for some reason email is null here, the type assertion is needed,
+      // but ideally, the state management prevents this.
+      if (!email) {
+         throw new Error("User email not found in session.");
+      }
+
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email as string,
+        email: email,
       });
-      
+
       if (error) {
         throw error;
       }
-      
+
       alert('Verification email has been resent!');
-    } catch (error: any) {
-      alert(`Error: ${error.message}`);
+    } catch (error: unknown) {
+      // Use a type guard to safely access error properties
+      if (error instanceof Error) {
+         alert(`Error: ${error.message}`);
+      } else {
+         alert('An unknown error occurred while resending email.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -80,10 +93,10 @@ export default function Verification() {
             </svg>
           </div>
         </div>
-        
+
         <div className="mt-4 text-center">
           <p className="text-lg text-gray-300">
-            We've sent a verification email to:
+            We&apos;ve sent a verification email to:
           </p>
           <p className="mt-2 text-xl font-semibold text-indigo-400">
             {email}
@@ -92,7 +105,7 @@ export default function Verification() {
             Please check your inbox and click the verification link to complete your registration.
           </p>
         </div>
-        
+
         <div className="mt-8 space-y-4">
           <button
             onClick={handleResendEmail}
@@ -101,7 +114,7 @@ export default function Verification() {
           >
             {isLoading ? 'Sending...' : 'Resend verification email'}
           </button>
-          
+
           <p className="text-center text-sm text-gray-400">
             Already verified?{' '}
             <Link href="/auth/login" className="font-medium text-indigo-400 hover:text-indigo-300">
@@ -109,14 +122,14 @@ export default function Verification() {
             </Link>
           </p>
         </div>
-        
+
         <div className="mt-8 pt-6 border-t border-gray-700">
-          <h2 className="text-lg font-medium text-gray-300">Didn't receive the email?</h2>
+          <h2 className="text-lg font-medium text-gray-300">Didn&apos;t receive the email?</h2>
           <ul className="mt-4 list-disc pl-5 space-y-2 text-sm text-gray-400">
             <li>Check your spam or junk folder</li>
             <li>Verify you entered the correct email address</li>
             <li>Allow some time for the email to arrive</li>
-            <li>If you still haven't received it, try resending the verification email</li>
+            <li>If you still haven&apos;t received it, try resending the verification email</li>
           </ul>
         </div>
       </div>

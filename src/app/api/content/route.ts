@@ -117,7 +117,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ContentRe
         } catch (e) {
             return createErrorResponse('Invalid JSON body.', 'INVALID_JSON', 400, e instanceof Error ? e.message : String(e));
         }
-        const { topic, contentType, tone, audience, length, includeHashtags, includeCta, generateVariations, isPremium = false } = body;
+        const { topic, contentType, tone, audience, length, includeHashtags, generateVariations, isPremium = false } = body;
         // Determine credit cost (adjust if variations cost more)
         creditsToDeduct = isPremium ? CREDITS_PREMIUM : CREDITS_BASIC;
 
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ContentRe
         const maxTokens = isPremium ? 400 : 250;
         const temperature = isPremium ? 0.7 : 0.75; // Adjusted premium temp slightly
         const numVariations = generateVariations ? (isPremium ? 3 : 2) : 1; // Generate more variations for premium
-        let variations: string[] = [];
+        const variations: string[] = [];
 
         console.log(`${LOG_PREFIX} Calling Cohere for user ${userId} (${numVariations} variations)...`);
         try {
@@ -202,11 +202,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<ContentRe
                 if (!text) throw new Error(`AI API returned empty content for variation ${i + 1}.`);
 
                  // Basic cleaning (remove quotes, extra whitespace)
-                let cleanedText = text.replace(/^"|"$/g, '').trim();
+                const cleanedText = text.replace(/^"|"$/g, '').trim();
                 variations.push(cleanedText);
             }
         } catch (error) {
-            let errMsg = "AI API request failed after credit deduction.";
+            const errMsg = "AI API request failed after credit deduction.";
             let errDetails: unknown = error instanceof Error ? error.message : String(error);
             let status = 502;
             if (axios.isAxiosError(error)) {

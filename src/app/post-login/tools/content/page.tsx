@@ -2,24 +2,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Import Supabase client
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Star, Copy, RotateCcw, Save, Users, MessageSquare, Hash, Info, AlertTriangle, X, CreditCard, ExternalLink, Settings2, ChevronDown, ChevronUp } from 'lucide-react'; // Added necessary icons, removed Zap
+import { Sparkles, Star, Copy, RotateCcw, Save, Users, MessageSquare, Hash, Info, AlertTriangle, X, CreditCard, ExternalLink, Settings2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Input } from '@/components/ui/input';
-// Check if Switch component exists, otherwise use checkbox or implement Switch
-import { Checkbox } from "@/components/ui/checkbox"; // Using Checkbox for simplicity
-// import { Switch } from "@/components/ui/switch"; // Uncomment if you have a Switch component
-import { Label } from "@/components/ui/label"; // For associating labels with controls
-// Optional: import { useToast } from "@/components/ui/use-toast";
-import { Database } from '@/types_db'; // Import Database types
-import Link from 'next/link'; // Import Link
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Database } from '@/types_db';
+import Link from 'next/link';
 
 // --- Configuration Data --- (Moved outside component for clarity)
 const contentTypes = [
@@ -155,14 +152,17 @@ export default function ContentGeneratorPage() {
           console.warn("[Client] Profile data missing or credits invalid.");
           throw new Error('Could not retrieve valid credit information.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) { // Corrected: Replaced any with unknown
         console.error("[Client] Error fetching credits:", err);
-        const message = err.message || 'Could not load user credits.';
+        // Corrected: Safely access message property
+        const message = (err instanceof Error) ? err.message : 'Could not load user credits.';
         setError(message);
         setCurrentCredits(null);
-        if (message === 'Not authenticated') {
+        if (message.includes('Not authenticated')) { // Basic check for auth error message
           console.log("[Client] User not authenticated. Redirecting...");
           router.push('/login');
+        } else if (message.includes('User profile not found')) {
+          // Specific handling if needed
         }
       } finally {
         setIsLoadingCredits(false);
@@ -291,16 +291,23 @@ export default function ContentGeneratorPage() {
           // toast({ title: "Content Generated!", description: `Used ${creditsToUse} credit(s).` });
         } else {
           console.warn("[Client] API success response missing remainingCredits. Deducting locally.");
-          setCurrentCredits(currentCredits - creditsToUse); // Fallback
+          if (currentCredits !== null) { // Only deduct if currentCredits is known
+            setCurrentCredits(currentCredits - creditsToUse); // Fallback
+          } else {
+            // Cannot deduct, maybe refetch credits?
+            // fetchCredits(); // Consider refetching credits if they were null before
+          }
           // toast({ title: "Content Generated!", description: `Used ${creditsToUse} credit(s). (Local fallback)` });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) { // Corrected: Replaced any with unknown
       console.error('[Client] Error in handleGenerate:', err);
-      if (!showOutOfCreditsAlert) {
-        setError(err.message || 'An unexpected error occurred during generation.');
+      // Corrected: Safely access message property
+      const message = (err instanceof Error) ? err.message : 'An unexpected error occurred during generation.';
+      if (!showOutOfCreditsAlert) { // Avoid overwriting the credit alert message
+        setError(message);
       }
-      // toast({ variant: "destructive", title: "Generation Failed", description: err.message });
+      // toast({ variant: "destructive", title: "Generation Failed", description: message });
       setGeneratedContent(''); // Clear results on error
       setGeneratedHashtags([]);
       setVariations([]);
@@ -630,8 +637,8 @@ export default function ContentGeneratorPage() {
                 <Button
                   type="button"
                   className={`w-full h-11 text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed rounded-md flex items-center justify-center gap-2 transition-all duration-200 ease-in-out shadow-md hover:shadow-lg ${activeTab === 'basic'
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
                     }`}
                   onClick={handleGenerate}
                   disabled={!topic.trim() || (audience === 'custom' && !customAudience.trim()) || isGenerating || isLoadingCredits || currentCredits === null || showOutOfCreditsAlert}
@@ -711,8 +718,10 @@ export default function ContentGeneratorPage() {
                   ) : (
                     <div className="flex-grow flex flex-col items-center justify-center text-gray-600 text-center p-4 md:p-8">
                       <MessageSquare className="h-12 w-12 md:h-16 md:w-16 mb-5 text-gray-700 opacity-80" />
-                      <p className="text-lg md:text-xl mb-2 text-gray-400 font-medium">Your generated content will show up here</p>
-                      <p className="text-gray-500 text-sm md:text-base max-w-xs mx-auto">Fill in the details on the left and click "Generate Content".</p>
+                      {/* Corrected: Use single quotes inside double quotes */}
+                      <p className="text-lg md:text-xl mb-2 text-gray-400 font-medium">&apos;Your content will show up here&apos;</p>
+                      {/* Corrected: Use single quotes inside double quotes */}
+                      <p className="text-gray-500 text-sm md:text-base max-w-xs mx-auto">&quot;Fill in the details on the left and click &apos;Generate Content&apos;.&quot;</p>
                     </div>
                   )}
                 </div>
@@ -722,7 +731,13 @@ export default function ContentGeneratorPage() {
                   <div className="pt-4 border-t border-gray-800">
                     <div className="flex justify-between items-center mb-2">
                       <Label className="text-sm font-medium text-gray-300 flex items-center gap-1.5"><Hash size={14} /> Suggested Hashtags</Label>
-                      <Button variant="outline" size="xs" className="h-7 px-2 text-xs border-gray-700 hover:bg-gray-700/50" onClick={handleCopyHashtags} title="Copy Hashtags">
+                      <Button
+                        variant="outline"
+                        size="sm" // Changed from 'xs' to 'sm'
+                        className="h-7 px-2 text-xs border-gray-700 hover:bg-gray-700/50"
+                        onClick={handleCopyHashtags}
+                        title="Copy Hashtags"
+                      >
                         <Copy size={12} className="mr-1" /> Copy
                       </Button>
                     </div>
@@ -764,7 +779,7 @@ export default function ContentGeneratorPage() {
             </Card>
 
 
-            
+
           </div> {/* End Output Column */}
         </div> {/* End Main Grid */}
       </div> {/* End Max Width Container */}
@@ -783,4 +798,3 @@ export default function ContentGeneratorPage() {
     </div> // End Page Root Div
   );
 }
-

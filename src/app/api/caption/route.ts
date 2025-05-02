@@ -189,7 +189,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptionRe
             if (!generatedContent) throw new Error("AI API returned empty content.");
 
         } catch (error) {
-            let errorMessage = "AI API request failed after credit deduction.";
+            const errorMessage = "AI API request failed after credit deduction.";
             let errorDetails: unknown = error instanceof Error ? error.message : String(error);
             let statusCode = 500; // Default internal error
 

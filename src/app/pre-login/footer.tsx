@@ -1,9 +1,10 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { useState } from 'react';
 import { Instagram, Facebook, Linkedin, ChevronDown, ChevronUp } from "lucide-react";
+
+type SectionKey = 'quickLinks' | 'legal';
 
 export default function Footer() {
   const [openSections, setOpenSections] = useState({
@@ -11,7 +12,7 @@ export default function Footer() {
     legal: false
   });
 
-  const toggleSection = (section: string) => {
+  const toggleSection = (section: SectionKey) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
@@ -171,7 +172,6 @@ export default function Footer() {
           </div>
         </div>
       </div>
-
     </footer>
   );
 }

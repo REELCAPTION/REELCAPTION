@@ -2,6 +2,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import Link from 'next/link';
+import Image from 'next/image';
 
 const tools = [
   {
@@ -75,7 +76,7 @@ export default function HeroSection() {
             whileTap={{ scale: 0.95 }}
             className="px-10 py-4 bg-white text-neutral-900 font-bold rounded-full shadow-lg hover:shadow-neutral-300/30 transition-all"
           >
-            Get Started - It's Free
+            Get Started - It&apos;s Free
           </motion.button>
         </Link>
 
@@ -99,9 +100,11 @@ export default function HeroSection() {
             <div className="relative flex-1 max-w-md">
               <div className="relative bg-neutral-800/80 backdrop-blur-sm p-1 rounded-2xl border border-neutral-700 shadow-xl overflow-hidden group">
                 <div className="absolute top-4 left-4 text-2xl z-10">{tool.icon}</div>
-                <img
+                <Image
                   src={tool.img}
                   alt={tool.title}
+                  width={500}
+                  height={300}
                   className="w-full h-auto rounded-xl object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               </div>

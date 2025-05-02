@@ -183,7 +183,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TweetGene
             generatedText = cohereResponse.data.generations[0]?.text?.trim();
             if (!generatedText) throw new Error("AI API returned empty content.");
         } catch (error) {
-            let errorMessage = "AI API request failed after credit deduction.";
+            const errorMessage = "AI API request failed after credit deduction.";
             let errorDetails: unknown = error instanceof Error ? error.message : String(error);
             let statusCode = 502; // Bad Gateway
              if (axios.isAxiosError(error)) {
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TweetGene
         let uniqueHashtags: string[] = [];
         try {
              // (Keep processing logic as defined in your original code)
-            let cleanedText = generatedText
+            const cleanedText = generatedText
                 .replace(/^tweet:/i, '').replace(/^here('s| is)? your tweet:/i, '')
                 .replace(/^output:/i, '').replace(/^```json\n?/, '')
                 .replace(/\n?```$/, '').replace(/^\s*Tweet:\s*/i, '').trim();

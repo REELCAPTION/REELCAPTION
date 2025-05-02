@@ -17,7 +17,6 @@ export default function Page() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string>("tool1");
   const [ToolComponent, setToolComponent] = useState<React.ComponentType | null>(null);
-  const [credits, setCredits] = useState<number>(0);
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const supabase = createClientComponentClient();
@@ -36,7 +35,7 @@ export default function Page() {
 
           if (error) throw error;
           if (data) {
-            setCredits(data.credits);
+            ;
             setUserEmail(data.email || "");
             setUserName(data.name || "");
           }
@@ -60,8 +59,8 @@ export default function Page() {
         const toolPath = toolOptions.find(tool => tool.id === selectedTool)?.path;
         if (!toolPath) return;
 
-        const module = await import(`@/app/post-login/tools/${toolPath}/page`);
-        setToolComponent(() => module.default);
+        const dynamicModule = await import(`@/app/post-login/tools/${toolPath}/page`);
+        setToolComponent(() => dynamicModule.default);
       } catch (err) {
         console.error("Module load error:", err);
         setToolComponent(null);
@@ -73,12 +72,12 @@ export default function Page() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/login';
+    window.location.href = '/auth/login';
   };
 
   return (
     <div className="flex h-screen bg-black w-full relative">
-      
+
 
       <Sidebar
         isMobileMenuOpen={isMobileMenuOpen}

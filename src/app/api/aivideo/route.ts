@@ -196,8 +196,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<VideoIdea
             }
         } catch (error) {
              let errorMessage = "AI API request failed after credit deduction.";
-             let errorDetails: unknown = error instanceof Error ? error.message : String(error);
-             let statusCode = 502;
+             const errorDetails: unknown = error instanceof Error ? error.message : String(error);
+             const statusCode = 502;
              if (error instanceof Error && error.message.includes("Cohere API Error")) {
                  errorMessage = error.message;
              }

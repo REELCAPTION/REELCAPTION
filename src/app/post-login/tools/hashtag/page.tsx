@@ -2,23 +2,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Import Supabase client
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Star, Copy, RotateCcw, Save, Hash, MessageSquare, Flame, Bookmark, Info, AlertTriangle, X, CreditCard, ExternalLink } from 'lucide-react'; // Added necessary icons
+import { Sparkles, Star, Copy, RotateCcw, Save, Hash, MessageSquare, Flame, Bookmark, Info, AlertTriangle, X, CreditCard, ExternalLink } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 // Optional: import { useToast } from "@/components/ui/use-toast";
-import { Database } from '@/types_db'; // Import Database types
-import Link from 'next/link'; // Import Link
+import { Database } from '@/types_db';
+import Link from 'next/link';
 
 export default function HashtagGeneratorPage() {
-  const router = useRouter(); // Initialize useRouter
-  const supabase = createClientComponentClient<Database>(); // Initialize Supabase client
+  const router = useRouter();
+  const supabase = createClientComponentClient<Database>();
   // Optional: const { toast } = useToast();
 
   // --- State ---
@@ -59,13 +59,7 @@ export default function HashtagGeneratorPage() {
     { value: 'nature', label: 'Nature & Environment' }
   ];
 
-  // Note: Consider fetching popular hashtags dynamically if possible
-  const popularHashtags: Record<string, string[]> = {
-    general: ['#trending', '#viral', '#instagood', '#photooftheday', '#love'],
-    business: ['#entrepreneur', '#business', '#success', '#marketing', '#smallbusiness'],
-    travel: ['#travel', '#wanderlust', '#adventure', '#vacation', '#explore'],
-    // ... add more category mappings
-  };
+
 
   const exampleTopics = [
     { topic: 'Coffee shop grand opening event', hashtags: ['#coffeeshop', '#grandopening', '#specialtycoffee', '#localbusiness', '#cafevibes'] },
@@ -117,12 +111,12 @@ export default function HashtagGeneratorPage() {
              console.warn("[Client] Profile data missing or credits field invalid.");
              throw new Error('Could not retrieve valid credit information.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) { // Changed from any to unknown
         console.error("[Client] Error fetching credits:", err);
-        const message = err.message || 'Could not load user credits.';
+        const message = err instanceof Error ? err.message : 'An unknown error occurred while loading credits.'; // Safely access message
         setError(message);
         setCurrentCredits(null);
-         if (message === 'Not authenticated') {
+         if (message.includes('Not authenticated')) { // Check for specific message
              console.log("[Client] User not authenticated. Redirecting...");
              // Optional: Show toast before redirect
              router.push('/login'); // Redirect to login page
@@ -132,7 +126,7 @@ export default function HashtagGeneratorPage() {
       }
     };
     fetchCredits();
-  }, [supabase, router]);
+  }, [supabase, router]); // Added supabase and router to dependency array
 
   // Update required credits when tab changes
   useEffect(() => {
@@ -242,14 +236,17 @@ export default function HashtagGeneratorPage() {
              // toast({ title: "Hashtags Generated!", description: `Used ${creditsToUse} credit(s).` });
         } else {
             console.warn("[Client] API success response missing remainingCredits. Deducting locally (less reliable).");
-            setCurrentCredits(currentCredits - creditsToUse); // Fallback deduction
+             if (currentCredits !== null) { // Only deduct if we had a credit count
+                setCurrentCredits(currentCredits - creditsToUse); // Fallback deduction
+             }
             // toast({ title: "Hashtags Generated!", description: `Used ${creditsToUse} credit(s). (Local fallback)` });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) { // Changed from any to unknown
       console.error('[Client] Error in handleGenerate fetch/processing:', err);
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred during generation.'; // Safely access message
       if (!showOutOfCreditsAlert) { // Don't overwrite OOC alert with generic error
-         setError(err.message || 'An unexpected error occurred during generation.');
+         setError(message);
       }
       // toast({ variant: "destructive", title: "Generation Failed", description: err.message });
       // Clear results on error to avoid confusion
@@ -272,7 +269,12 @@ export default function HashtagGeneratorPage() {
       })
       .catch(err => {
            console.error("[Client] Copy failed:", err);
-           setError("Failed to copy hashtags to clipboard.");
+           // Provide a user-friendly error message if possible
+           let errorMessage = "Failed to copy hashtags to clipboard.";
+            if (err instanceof Error) {
+                errorMessage += ` ${err.message}`;
+            }
+           setError(errorMessage);
            // toast({ variant: "destructive", title: "Copy Failed" });
       });
   };
@@ -509,7 +511,7 @@ export default function HashtagGeneratorPage() {
                              className="w-full text-left p-3 bg-gray-800 hover:bg-gray-700/80 rounded-md text-sm text-gray-300 transition-colors duration-150 group"
                              title={`Use topic: ${ex.topic}`}
                          >
-                             <span className="font-medium text-gray-100 group-hover:text-white block mb-1.5">"{ex.topic}"</span>
+                             <span className="font-medium text-gray-100 group-hover:text-white block mb-1.5">&quot;{ex.topic}&quot;</span>
                              <div className="flex flex-wrap gap-1.5">
                                 {ex.hashtags.slice(0,4).map((tag, idx) => <Badge key={idx} variant="secondary" className="text-xs bg-gray-700 group-hover:bg-gray-600 text-gray-400 group-hover:text-gray-200 px-1.5 py-0.5 font-normal">{tag}</Badge>)}
                                  {ex.hashtags.length > 4 && <Badge variant="secondary" className="text-xs bg-gray-700 text-gray-400 px-1.5 py-0.5 font-normal">...</Badge>}
@@ -589,7 +591,7 @@ export default function HashtagGeneratorPage() {
                     <div className="flex-grow flex flex-col items-center justify-center text-gray-600 text-center p-4 md:p-8">
                       <Hash className="h-12 w-12 md:h-16 md:w-16 mb-5 text-gray-700 opacity-80" />
                       <p className="text-lg md:text-xl mb-2 text-gray-400 font-medium">Hashtag suggestions will load here</p>
-                      <p className="text-gray-500 text-sm md:text-base max-w-xs mx-auto">Enter your topic/keywords above and click the "Generate Hashtags" button.</p>
+                      <p className="text-gray-500 text-sm md:text-base max-w-xs mx-auto">Enter your topic/keywords above and click the &quot;Generate Hashtags&quot; button.</p>
                     </div>
                   )}
                 </div>
@@ -636,7 +638,7 @@ export default function HashtagGeneratorPage() {
               </CardContent>
             </Card>
 
-            {/* Examples Section (Mobile) */}
+            {/* Examples Section (Mobile) - Consolidated into one block */}
             <Card className="md:hidden bg-gray-900 border-gray-800 rounded-xl shadow-lg p-4">
                 <CardHeader className="p-0 pb-3">
                     <CardTitle className="text-lg font-semibold text-gray-200 flex items-center gap-2"><Star className="text-yellow-400 h-5 w-5" /> Example Topics</CardTitle>
@@ -649,7 +651,7 @@ export default function HashtagGeneratorPage() {
                             className="w-full text-left p-3 bg-gray-800 hover:bg-gray-700/80 rounded-md text-sm text-gray-300 transition-colors duration-150 group"
                             title={`Use topic: ${ex.topic}`}
                         >
-                            <span className="font-medium text-gray-100 group-hover:text-white block mb-1.5">"{ex.topic}"</span>
+                            <span className="font-medium text-gray-100 group-hover:text-white block mb-1.5">&quot;{ex.topic}&quot;</span>
                             <div className="flex flex-wrap gap-1.5">
                                {ex.hashtags.slice(0,4).map((tag, idx) => <Badge key={idx} variant="secondary" className="text-xs bg-gray-700 group-hover:bg-gray-600 text-gray-400 group-hover:text-gray-200 px-1.5 py-0.5 font-normal">{tag}</Badge>)}
                                 {ex.hashtags.length > 4 && <Badge variant="secondary" className="text-xs bg-gray-700 text-gray-400 px-1.5 py-0.5 font-normal">...</Badge>}
@@ -658,30 +660,7 @@ export default function HashtagGeneratorPage() {
                     ))}
                 </CardContent>
             </Card>
-            
-            {/* Examples Section - Show on mobile only */}
-            <div className="space-y-4 md:hidden">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
-                <Star className="text-yellow-400 h-5 w-5" />
-                Example Topics
-              </h2>
-              <div className="space-y-4">
-                {exampleTopics.map((example, index) => (
-                  <Card key={index} className="bg-gray-900 border-gray-800 rounded-lg">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-300">{example.topic}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2">
-                        {example.hashtags.map((tag, i) => (
-                          <Badge key={i} className="bg-gray-800 text-gray-200">{tag}</Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
+
           </div>
         </div>
       </div>

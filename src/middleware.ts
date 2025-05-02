@@ -21,7 +21,6 @@ export async function middleware(req: NextRequest) {
   ];
   const isPublicRoute = publicRoutes.includes(pathname);
   const isAuthCallbackRoute = pathname.startsWith('/auth/callback');
-  const isPostLoginRoute = pathname.startsWith('/post-login');
 
   if (!session && !isPublicRoute && !isAuthCallbackRoute) {
     return NextResponse.redirect(new URL('/auth/login', req.url));
