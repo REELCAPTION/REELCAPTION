@@ -10,6 +10,7 @@ export async function GET(request: Request) {
 
   // If no code is present, redirect to home page
   if (!code) {
+    console.error('No code in URL');
     return NextResponse.redirect(new URL('/', requestUrl.origin));
   }
 
@@ -18,7 +19,6 @@ export async function GET(request: Request) {
 
     // Exchange the code for a session
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
     if (exchangeError) {
       console.error('Error exchanging code for session:', exchangeError);
       return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if exchange fails
@@ -68,6 +68,13 @@ export async function GET(request: Request) {
           return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if update fails
         }
       }
+    }
+
+    // Ensure session is valid before redirecting
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('No session found.');
+      return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if session is invalid
     }
 
     // Redirect to the dashboard after successful login and profile setup

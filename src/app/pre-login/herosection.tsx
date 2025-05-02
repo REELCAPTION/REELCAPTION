@@ -70,7 +70,7 @@ export default function HeroSection() {
           Transform your social media presence with our all-in-one creator toolkit
         </p>
 
-        <Link href="/signup">
+        <Link href="/auth/signup">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
