@@ -7,51 +7,74 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  
-  if (code) {
+
+  // If no code is present, redirect to home page
+  if (!code) {
+    return NextResponse.redirect(new URL('/', requestUrl.origin));
+  }
+
+  try {
     const supabase = createRouteHandlerClient({ cookies });
-    
+
     // Exchange the code for a session
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-    // For OAuth logins, update user profile if needed
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    if (exchangeError) {
+      console.error('Error exchanging code for session:', exchangeError);
+      return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if exchange fails
+    }
 
-    if (user) {
-      // Check if user's profile already has a name and country
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('name, country')
-        .eq('id', user.id)
-        .single();
+    // Retrieve the authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error('Error retrieving user:', userError);
+      return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if user retrieval fails
+    }
 
-      // If name or country is missing, try to get from user metadata
-      if ((!profile?.name || !profile?.country) && user.user_metadata) {
-        const updateData: { name?: string; country?: string } = {};
-        
-        // Get name from OAuth provider if available
-        if (!profile?.name && user.user_metadata.full_name) {
-          updateData.name = user.user_metadata.full_name;
-        } else if (!profile?.name && user.user_metadata.name) {
-          updateData.name = user.user_metadata.name;
-        }
+    // Check if the user's profile already has a name and country
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('name, country')
+      .eq('id', user.id)
+      .single();
 
-        // We could attempt to get country via IP geolocation here
-        // but for simplicity, we'll let the user update it later if needed
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+      return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if profile fetching fails
+    }
 
-        // Update the profile if we have new data
-        if (Object.keys(updateData).length > 0) {
-          await supabase
-            .from('user_profiles')
-            .update(updateData)
-            .eq('id', user.id);
+    // If name or country is missing, try to get from user metadata
+    if ((!profile?.name || !profile?.country) && user.user_metadata) {
+      const updateData: { name?: string; country?: string } = {};
+
+      // Get name from OAuth provider if available
+      if (!profile?.name && user.user_metadata.full_name) {
+        updateData.name = user.user_metadata.full_name;
+      } else if (!profile?.name && user.user_metadata.name) {
+        updateData.name = user.user_metadata.name;
+      }
+
+      // We could attempt to get country via IP geolocation here, but for simplicity, we'll let the user update it later if needed
+
+      // Update the profile if we have new data
+      if (Object.keys(updateData).length > 0) {
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update(updateData)
+          .eq('id', user.id);
+
+        if (updateError) {
+          console.error('Error updating profile:', updateError);
+          return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if update fails
         }
       }
     }
-  }
 
-  // Redirect to dashboard or the appropriate page
-  return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
+    // Redirect to the dashboard after successful login and profile setup
+    return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
+
+  } catch (error) {
+    console.error('An unexpected error occurred:', error);
+    return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if an unexpected error occurs
+  }
 }
