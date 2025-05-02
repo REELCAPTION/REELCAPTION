@@ -39,6 +39,8 @@ export default function Login() {
         throw error;
       }
       
+      router.push('/dashboard');
+
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
