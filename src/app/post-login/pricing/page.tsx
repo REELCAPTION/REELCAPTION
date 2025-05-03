@@ -48,9 +48,9 @@ export default function PricingPage() {
           <PricingCard
             title="Starter Plan"
             description="Best for casual creators"
-            price="₹50"
+            price="₹10"
             credits="50 credits"
-            amount={50}
+            amount={10}
             buttonText="Buy Now"
             buttonClass="bg-gray-800 hover:bg-gray-700 text-white"
           />
