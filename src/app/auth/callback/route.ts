@@ -8,80 +8,71 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
 
-  // If no code is present, redirect to home page
   if (!code) {
-    console.error('No code in URL');
+    console.error('❌ No OAuth code in URL');
     return NextResponse.redirect(new URL('/', requestUrl.origin));
   }
 
-  try {
-    const supabase = createRouteHandlerClient({ cookies });
+  const supabase = createRouteHandlerClient({ cookies });
 
-    // Exchange the code for a session
+  try {
+    // Step 1: Exchange code for session
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     if (exchangeError) {
-      console.error('Error exchanging code for session:', exchangeError);
-      return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if exchange fails
+      console.error('❌ Session exchange error:', exchangeError.message);
+      return NextResponse.redirect(new URL('/', requestUrl.origin));
     }
 
-    // Retrieve the authenticated user
+    // Step 2: Get the user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      console.error('Error retrieving user:', userError);
-      return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if user retrieval fails
+      console.error('❌ Failed to retrieve user:', userError?.message || 'No user');
+      return NextResponse.redirect(new URL('/', requestUrl.origin));
     }
 
-    // Check if the user's profile already has a name and country
+    // Step 3: Fetch profile
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('name, country')
       .eq('id', user.id)
       .single();
 
-    if (profileError) {
-      console.error('Error fetching profile:', profileError);
-      return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if profile fetching fails
+    if (profileError && profileError.code !== 'PGRST116') { // Not found is acceptable
+      console.error('❌ Failed to fetch profile:', profileError.message);
+      return NextResponse.redirect(new URL('/', requestUrl.origin));
     }
 
-    // If name or country is missing, try to get from user metadata
-    if ((!profile?.name || !profile?.country) && user.user_metadata) {
-      const updateData: { name?: string; country?: string } = {};
+    // Step 4: Update missing data
+    const updateData: { name?: string } = {};
+    const meta = user.user_metadata;
 
-      // Get name from OAuth provider if available
-      if (!profile?.name && user.user_metadata.full_name) {
-        updateData.name = user.user_metadata.full_name;
-      } else if (!profile?.name && user.user_metadata.name) {
-        updateData.name = user.user_metadata.name;
-      }
+    if ((!profile?.name) && (meta?.full_name || meta?.name)) {
+      updateData.name = meta.full_name || meta.name;
+    }
 
-      // We could attempt to get country via IP geolocation here, but for simplicity, we'll let the user update it later if needed
+    if (Object.keys(updateData).length > 0) {
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update(updateData)
+        .eq('id', user.id);
 
-      // Update the profile if we have new data
-      if (Object.keys(updateData).length > 0) {
-        const { error: updateError } = await supabase
-          .from('user_profiles')
-          .update(updateData)
-          .eq('id', user.id);
-
-        if (updateError) {
-          console.error('Error updating profile:', updateError);
-          return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if update fails
-        }
+      if (updateError) {
+        console.error('❌ Profile update error:', updateError.message);
+        return NextResponse.redirect(new URL('/', requestUrl.origin));
       }
     }
 
-    // Ensure session is valid before redirecting
+    // Step 5: Verify session and redirect
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      console.error('No session found.');
-      return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if session is invalid
+      console.error('❌ Session missing after exchange');
+      return NextResponse.redirect(new URL('/', requestUrl.origin));
     }
 
-    // Redirect to the dashboard after successful login and profile setup
+    console.log('✅ Google login success. Redirecting to dashboard.');
     return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
-
-  } catch (error) {
-    console.error('An unexpected error occurred:', error);
-    return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if an unexpected error occurs
+  } catch (error: any) {
+    console.error('❌ Unexpected error during OAuth callback:', error.message || error);
+    return NextResponse.redirect(new URL('/', requestUrl.origin));
   }
 }
