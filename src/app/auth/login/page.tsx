@@ -53,24 +53,12 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      
-      if (error) {
-        throw error;
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: process.env.NEXT_PUBLIC_REDIRECT_URL || 'https://reelcaption.in/auth/callback' // Ensure this is correctly set in .env.local
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during Google sign in');
-      setLoading(false);
-    }
+    });
   };
 
   return (
