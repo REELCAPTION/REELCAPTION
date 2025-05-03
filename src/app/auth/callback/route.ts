@@ -77,11 +77,22 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if session is invalid
     }
 
-    // Redirect to the dashboard after successful login and profile setup
-    return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
+    // Determine the appropriate URL based on the environment
+    const redirectUrl = process.env.NODE_ENV === 'production'
+      ? 'https://www.reelcaption.in/dashboard'  // For production
+      : 'http://localhost:3000/dashboard';  // For local development
 
-  } catch (error) {
-    console.error('An unexpected error occurred:', error);
+    // Redirect to the dashboard after successful login and profile setup
+    return NextResponse.redirect(redirectUrl);
+
+  } catch (error: unknown) {
+    // TypeScript will know 'error' is of type 'unknown'
+    if (error instanceof Error) {
+      console.error('An unexpected error occurred:', error.message);
+      console.error(error.stack);
+    } else {
+      console.error('An unexpected error occurred:', error);
+    }
     return NextResponse.redirect(new URL('/', requestUrl.origin)); // Redirect to home if an unexpected error occurs
   }
 }
