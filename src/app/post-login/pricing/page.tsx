@@ -86,6 +86,7 @@ export default function PricingPage() {
   );
 }
 
+
 function PricingCard({
   title,
   description,
@@ -153,8 +154,13 @@ function PricingCard({
         description: `${title} - ${credits} credits`,
         order_id: order.orderId,
         handler: async function (response: RazorpayResponse) {
+          // REPLACE THIS ENTIRE HANDLER FUNCTION WITH THE DEBUG VERSION BELOW
           try {
             console.log("Payment successful, updating credits...");
+            console.log("Payment response:", {
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id
+            });
             
             const paymentResponse = await fetch('/api/post-login/update-credits', {
               method: 'POST',
@@ -169,6 +175,9 @@ function PricingCard({
               }),
             });
 
+            // Log the raw response status
+            console.log("Raw response status:", paymentResponse.status);
+            
             if (!paymentResponse.ok) {
               const errorData = await paymentResponse.json();
               console.error("Credit update failed:", errorData);
@@ -177,6 +186,7 @@ function PricingCard({
             }
 
             const paymentData = await paymentResponse.json();
+            console.log("Payment update response:", paymentData);
             
             if (paymentData.error) {
               console.error("Credit update failed:", paymentData.error);
@@ -184,7 +194,12 @@ function PricingCard({
               return;
             }
 
-            alert(`Payment Successful! ${paymentData.creditsAdded} credits added.`);
+            if (paymentData.paymentError) {
+              console.warn("Credits added but payment logging failed:", paymentData.paymentError);
+              alert(`Payment Successful! ${paymentData.creditsAdded} credits added, but payment logging had an issue.`);
+            } else {
+              alert(`Payment Successful! ${paymentData.creditsAdded} credits added.`);
+            }
             
             // Optional: Refresh the page or update the UI to show the new credit balance
             setTimeout(() => {
