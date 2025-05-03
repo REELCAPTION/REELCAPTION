@@ -11,7 +11,7 @@ interface PricingCardProps {
   title: string;
   description: string;
   price: string;
-  credits: string;
+  credits: number; // Changed to number for clarity
   buttonText: string;
   buttonClass: string;
   amount: number;
@@ -49,7 +49,7 @@ export default function PricingPage() {
             title="Starter Plan"
             description="Best for casual creators"
             price="₹1"
-            credits="50 credits"
+            credits={50}
             amount={1}
             buttonText="Buy Now"
             buttonClass="bg-gray-800 hover:bg-gray-700 text-white"
@@ -58,7 +58,7 @@ export default function PricingPage() {
             title="Pro Plan"
             description="Perfect for regular creators"
             price="₹100"
-            credits="150 credits"
+            credits={150}
             amount={100}
             buttonText="Buy Now"
             buttonClass="bg-blue-600 hover:bg-blue-500 text-white"
@@ -68,8 +68,8 @@ export default function PricingPage() {
             title="Business Plan"
             description="For teams and agencies"
             price="₹999"
-            credits="600 credits"
-            amount={500}
+            credits={600}
+            amount={999} // Changed to match the price shown
             buttonText="Buy Now"
             buttonClass="bg-gray-800 hover:bg-gray-700 text-white"
           />
@@ -97,84 +97,121 @@ function PricingCard({
   highlight = false,
 }: PricingCardProps) {
   async function handleBuy() {
-    const supabase = createClientComponentClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      const supabase = createClientComponentClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    const token = session?.access_token;
-    if (!token) {
-      alert("No session token found.");
-      return;
-    }
+      const token = session?.access_token;
+      if (!token) {
+        alert("Please login to purchase credits.");
+        return;
+      }
 
-    const response = await fetch('/api/post-login/create-order', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ amount, planCredits: parseInt(credits) }), // ADD THIS
-    });
+      // Show loading state
+      console.log(`Creating order for ${title} with ${credits} credits...`);
 
-    if (!response.ok) {
-      alert('Failed to create order');
-      return;
-    }
+      const response = await fetch('/api/post-login/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          amount, 
+          planName: title,
+          planCredits: credits // Now passing as a number
+        }),
+      });
 
-    const order = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Order creation failed:", errorData);
+        alert(`Failed to create order: ${errorData.error || 'Unknown error'}`);
+        return;
+      }
 
-    if (!order || !order.orderId) {
-      alert('Failed to create order');
-      return;
-    }
+      const order = await response.json();
 
-    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    if (!key) {
-      alert('Missing Razorpay Key');
-      return;
-    }
+      if (!order || !order.orderId) {
+        alert('Failed to create order: Missing order ID');
+        return;
+      }
 
-    const options = {
-      key,
-      amount: order.amount,
-      currency: 'INR',
-      name: 'REELCAPTION',
-      description: title,
-      order_id: order.orderId,
-      handler: async function (response: RazorpayResponse) {
-        const paymentResponse = await fetch('/api/post-login/update-credits', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            provider: 'razorpay',
-            paymentId: response.razorpay_payment_id,
-            orderId: response.razorpay_order_id,
-          }),
-        });
+      const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!key) {
+        alert('Missing Razorpay Key');
+        return;
+      }
 
-        const paymentData = await paymentResponse.json();
-        
-        if (paymentData.error) {
-          alert('Failed to update credits');
-          return;
-        }
+      const options = {
+        key,
+        amount: order.amount,
+        currency: 'INR',
+        name: 'REELCAPTION',
+        description: `${title} - ${credits} credits`,
+        order_id: order.orderId,
+        handler: async function (response: RazorpayResponse) {
+          try {
+            console.log("Payment successful, updating credits...");
+            
+            const paymentResponse = await fetch('/api/post-login/update-credits', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                provider: 'razorpay',
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+              }),
+            });
 
-        alert('Payment Successful! Credits added.');
-      },
-      theme: {
-        color: '#6366f1',
-      },
-    };
+            if (!paymentResponse.ok) {
+              const errorData = await paymentResponse.json();
+              console.error("Credit update failed:", errorData);
+              alert(`Failed to update credits: ${errorData.error || 'Unknown error'}`);
+              return;
+            }
 
-    if (typeof window !== 'undefined') {
-      const razorpay = new window.Razorpay(options);
+            const paymentData = await paymentResponse.json();
+            
+            if (paymentData.error) {
+              console.error("Credit update failed:", paymentData.error);
+              alert(`Failed to update credits: ${paymentData.error}`);
+              return;
+            }
+
+            alert(`Payment Successful! ${paymentData.creditsAdded} credits added.`);
+            
+            // Optional: Refresh the page or update the UI to show the new credit balance
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } catch (error) {
+            console.error("Error handling payment success:", error);
+            alert("An error occurred while processing your payment. Please contact support.");
+          }
+        },
+        prefill: {
+          name: "",
+          email: order.userEmail || "",
+        },
+        theme: {
+          color: '#6366f1',
+        },
+      };
+
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.on('payment.failed', function (response: any) {
+        alert(`Payment failed: ${response.error.description}`);
+      });
       razorpay.open();
-    } else {
-      alert("Razorpay script not loaded.");
+    } catch (error) {
+      console.error("Error in handleBuy:", error);
+      alert("An error occurred. Please try again later.");
     }
   }
 
@@ -195,7 +232,7 @@ function PricingCard({
           <span className="text-gray-400">/month</span>
         </div>
         <div className={`rounded-lg p-4 mb-8 ${highlight ? 'bg-blue-900/30' : 'bg-gray-800'}`}>
-          <p className="text-lg font-semibold text-center text-white">Includes {credits}</p>
+          <p className="text-lg font-semibold text-center text-white">Includes {credits} credits</p>
         </div>
         <ul className="space-y-3 mb-8">
           <ToolList />

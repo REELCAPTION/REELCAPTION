@@ -100,7 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 {/* REELCAPTION Text */}
                 <div className="flex flex-col">
-                  <span className="text-sm sm:text-2xl md:text-2xl font-black bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+                  <span className="text-sm sm:text-2xl md:text-2xl font-black bg-clip-text text-white">
                     REELCAPTION
                   </span>
                   {/* Optional underline effect */}

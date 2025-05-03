@@ -18,17 +18,20 @@ export async function POST(req) {
   try {
     // Parse request body
     const body = await req.json();
-    const { amount, planCredits } = body;
+    const { amount, planName, planCredits } = body;
+
+    console.log("📊 Create order request:", { amount, planName, planCredits });
 
     // Get user from token
     const token = req.headers.get('Authorization')?.replace('Bearer ', '');
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.error("❌ Unauthorized: User not found or token expired");
+      console.error("❌ Unauthorized: User not found or token expired", error);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log("✅ User authenticated:", user.id);
     console.log("Creating Razorpay Order...");
 
     // Create Razorpay order
@@ -39,11 +42,16 @@ export async function POST(req) {
       notes: {
         userId: user.id,
         email: user.email,
+        planName: planName || "",
         credits: planCredits?.toString() || "0", // store credits
       },
     });
 
-    console.log("Razorpay Order Response:", order);
+    console.log("✅ Razorpay Order Response:", {
+      id: order.id,
+      amount: order.amount,
+      currency: order.currency
+    });
 
     // Return order data to the frontend
     return NextResponse.json({
