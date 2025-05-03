@@ -32,6 +32,27 @@ export async function POST(req) {
     }
 
     console.log("✅ User authenticated:", user.id);
+    
+    // Check if user exists in database
+    const { data: userProfileData } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+    
+    // If user doesn't exist in the database, create a profile
+    if (!userProfileData) {
+      console.log("User profile doesn't exist, creating one...");
+      await supabase
+        .from('user_profiles')
+        .insert({
+          id: user.id,
+          email: user.email,
+          credits: 0
+        });
+      console.log("✅ User profile created");
+    }
+
     console.log("Creating Razorpay Order...");
 
     // Create Razorpay order

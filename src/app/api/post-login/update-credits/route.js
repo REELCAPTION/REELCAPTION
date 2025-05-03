@@ -87,32 +87,115 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unsupported provider' }, { status: 400 });
     }
 
-    // Retrieve the user's profile data from Supabase
+    // Check if user exists in the user_profiles table
     const { data: profileData, error: profileErr } = await supabase
-      .from('users')
+      .from('user_profiles') // Using the correct table name
       .select('credits')
       .eq('id', user.id)
       .single();
-
+    
     if (profileErr) {
-      console.error("❌ Profile error:", profileErr);
+      console.error("❌ Error fetching user profile:", profileErr);
+      
+      if (profileErr.code === 'PGRST116') { // No rows returned
+        // User profile doesn't exist, create it
+        console.log("Creating user profile...");
+        const { error: insertErr } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            credits: creditsToAdd
+          });
+          
+        if (insertErr) {
+          console.error("❌ Failed to create user profile:", insertErr);
+          return NextResponse.json({ error: 'Failed to create user profile', details: insertErr.message }, { status: 500 });
+        }
+        
+        console.log("✅ User profile created with initial credits:", creditsToAdd);
+        
+        // Log the payment
+        const { error: paymentLogError } = await supabase.from('payment').insert({
+          user_id: user.id,
+          provider,
+          amount,
+          credits_added: creditsToAdd,
+          status: 'completed',
+          payment_id: paymentId,
+          order_id: orderId,
+        });
+        
+        if (paymentLogError) {
+          console.error("❌ Failed to log payment:", paymentLogError);
+        } else {
+          console.log("✅ Payment logged successfully");
+        }
+        
+        return NextResponse.json({ 
+          message: 'User profile created and credits added successfully', 
+          newCredits: creditsToAdd,
+          creditsAdded: creditsToAdd
+        });
+      }
+      
       return NextResponse.json({ error: 'Failed to fetch user profile', details: profileErr.message }, { status: 500 });
     }
     
     if (!profileData) {
-      console.error("❌ User not found in database");
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      console.error("❌ User profile not found");
+      
+      // Create user profile
+      console.log("Creating user profile...");
+      const { error: insertErr } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: user.id,
+          email: user.email,
+          credits: creditsToAdd
+        });
+        
+      if (insertErr) {
+        console.error("❌ Failed to create user profile:", insertErr);
+        return NextResponse.json({ error: 'Failed to create user profile', details: insertErr.message }, { status: 500 });
+      }
+      
+      console.log("✅ User profile created with initial credits:", creditsToAdd);
+      
+      // Log the payment
+      const { error: paymentLogError } = await supabase.from('payment').insert({
+        user_id: user.id,
+        provider,
+        amount,
+        credits_added: creditsToAdd,
+        status: 'completed',
+        payment_id: paymentId,
+        order_id: orderId,
+      });
+      
+      if (paymentLogError) {
+        console.error("❌ Failed to log payment:", paymentLogError);
+      } else {
+        console.log("✅ Payment logged successfully");
+      }
+      
+      return NextResponse.json({ 
+        message: 'User profile created and credits added successfully', 
+        newCredits: creditsToAdd,
+        creditsAdded: creditsToAdd
+      });
     }
 
-    console.log("✅ Current user credits:", profileData.credits);
-
+    // User profile found, update credits
+    console.log("✅ Found user profile, current credits:", profileData.credits);
+    
     // Calculate the updated credits
     const updatedCredits = (profileData.credits || 0) + creditsToAdd;
     console.log("✅ Updated credits will be:", updatedCredits);
 
-    // Update the user's credits in the database
+    // Update the user's credits in the user_profiles table
     const { error: updateError } = await supabase
-      .from('users')
+      .from('user_profiles')
       .update({ credits: updatedCredits })
       .eq('id', user.id);
 
