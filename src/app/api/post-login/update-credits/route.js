@@ -41,6 +41,7 @@ export async function POST(req) {
     
     let creditsToAdd = 0;
     let amount = 0;
+    let planName = "";
 
     // Check Razorpay payment provider
     if (provider === 'razorpay') {
@@ -68,10 +69,21 @@ export async function POST(req) {
         amount = payment.amount / 100; // Convert from paise to INR
         console.log("✅ Payment amount:", amount);
 
+        // Get order to check for planName from notes
+        try {
+          const order = await razorpay.orders.fetch(orderId);
+          if (order && order.notes) {
+            planName = order.notes.planName || "";
+          }
+        } catch (orderError) {
+          console.warn("⚠️ Unable to fetch order details:", orderError);
+          // Continue with the process even if we can't get the plan name
+        }
+
         // Determine credits to add based on the amount
         if (amount === 1) creditsToAdd = 50;
         else if (amount === 100) creditsToAdd = 150;
-        else if (amount === 999) creditsToAdd = 600; // Updated to match your UI price
+        else if (amount === 999) creditsToAdd = 600;
         else {
           console.error("❌ Invalid amount:", amount);
           return NextResponse.json({ error: `Invalid amount: ${amount}` }, { status: 400 });
@@ -89,7 +101,7 @@ export async function POST(req) {
 
     // Check if user exists in the user_profiles table
     const { data: profileData, error: profileErr } = await supabase
-      .from('user_profiles') // Using the correct table name
+      .from('user_profiles')
       .select('credits')
       .eq('id', user.id)
       .single();
@@ -115,26 +127,44 @@ export async function POST(req) {
         
         console.log("✅ User profile created with initial credits:", creditsToAdd);
         
-        // Log the payment - Add more detailed error checking
-        const { data: paymentData, error: paymentLogError } = await supabase
-          .from('payment')  // Confirm this is the correct table name
-          .insert({
-            user_id: user.id,
-            provider,
-            amount,
-            credits_added: creditsToAdd,
-            status: 'completed',
-            payment_id: paymentId,
-            order_id: orderId,
-            created_at: new Date().toISOString(), // Explicitly set created_at
-          })
-          .select(); // Add select() to return the inserted data
-        
-        if (paymentLogError) {
-          console.error("❌ Failed to log payment:", paymentLogError);
-          // We'll still continue since credits were added
-        } else {
-          console.log("✅ Payment logged successfully", paymentData);
+        // Log the payment - FIRST ISSUE FIX: Check if payment table exists
+        try {
+          // Try to log the payment
+          const { error: paymentLogError } = await supabase
+            .from('payment')
+            .insert({
+              user_id: user.id,
+              provider,
+              amount,
+              credits_added: creditsToAdd,
+              status: 'completed',
+              payment_id: paymentId,
+              order_id: orderId,
+              plan_name: planName, // Added this field
+              created_at: new Date().toISOString()
+            });
+          
+          if (paymentLogError) {
+            console.error("❌ Failed to log payment:", paymentLogError);
+            // Continue since credits were added
+            return NextResponse.json({ 
+              message: 'User profile created and credits added successfully, but payment logging failed', 
+              newCredits: creditsToAdd,
+              creditsAdded: creditsToAdd,
+              paymentError: paymentLogError.message
+            });
+          }
+          
+          console.log("✅ Payment logged successfully");
+        } catch (paymentInsertError) {
+          console.error("❌ Exception logging payment:", paymentInsertError);
+          // Continue since credits were added
+          return NextResponse.json({ 
+            message: 'User profile created and credits added successfully, but payment logging failed', 
+            newCredits: creditsToAdd,
+            creditsAdded: creditsToAdd,
+            paymentError: paymentInsertError.message
+          });
         }
         
         return NextResponse.json({ 
@@ -168,25 +198,42 @@ export async function POST(req) {
       console.log("✅ User profile created with initial credits:", creditsToAdd);
       
       // Log the payment with improved error handling
-      const { data: paymentData, error: paymentLogError } = await supabase
-        .from('payment')  // Confirm this is the correct table name
-        .insert({
-          user_id: user.id,
-          provider,
-          amount,
-          credits_added: creditsToAdd,
-          status: 'completed',
-          payment_id: paymentId,
-          order_id: orderId,
-          created_at: new Date().toISOString(), // Explicitly set created_at
-        })
-        .select(); // Add select() to return the inserted data
-      
-      if (paymentLogError) {
-        console.error("❌ Failed to log payment:", paymentLogError);
+      try {
+        const { error: paymentLogError } = await supabase
+          .from('payment')
+          .insert({
+            user_id: user.id,
+            provider,
+            amount,
+            credits_added: creditsToAdd,
+            status: 'completed',
+            payment_id: paymentId,
+            order_id: orderId,
+            plan_name: planName, // Added this field
+            created_at: new Date().toISOString()
+          });
+        
+        if (paymentLogError) {
+          console.error("❌ Failed to log payment:", paymentLogError);
+          // Continue since credits were added
+          return NextResponse.json({ 
+            message: 'User profile created and credits added successfully, but payment logging failed', 
+            newCredits: creditsToAdd,
+            creditsAdded: creditsToAdd,
+            paymentError: paymentLogError.message
+          });
+        }
+        
+        console.log("✅ Payment logged successfully");
+      } catch (paymentInsertError) {
+        console.error("❌ Exception logging payment:", paymentInsertError);
         // Continue since credits were added
-      } else {
-        console.log("✅ Payment logged successfully", paymentData);
+        return NextResponse.json({ 
+          message: 'User profile created and credits added successfully, but payment logging failed', 
+          newCredits: creditsToAdd,
+          creditsAdded: creditsToAdd,
+          paymentError: paymentInsertError.message
+        });
       }
       
       return NextResponse.json({ 
@@ -216,32 +263,43 @@ export async function POST(req) {
 
     console.log("✅ Credits updated successfully");
 
-    // Log the payment in the payment table with improved debugging
-    const { data: paymentData, error: paymentLogError } = await supabase
-      .from('payment')  // Confirm this is the correct table name
-      .insert({
-        user_id: user.id,
-        provider,
-        amount,
-        credits_added: creditsToAdd,
-        status: 'completed',
-        payment_id: paymentId,
-        order_id: orderId,
-        created_at: new Date().toISOString(), // Explicitly set created_at
-      })
-      .select(); // Add select() to return the inserted data
+    // Log the payment in the payment table with improved debugging and error handling
+    try {
+      const { error: paymentLogError } = await supabase
+        .from('payment')
+        .insert({
+          user_id: user.id,
+          provider,
+          amount,
+          credits_added: creditsToAdd,
+          status: 'completed',
+          payment_id: paymentId,
+          order_id: orderId,
+          plan_name: planName, // Added this field
+          created_at: new Date().toISOString()
+        });
 
-    if (paymentLogError) {
-      console.error("❌ Failed to log payment:", paymentLogError);
-      // Don't return error here, but include it in the response
+      if (paymentLogError) {
+        console.error("❌ Failed to log payment:", paymentLogError);
+        // Don't return error here, but include it in the response
+        return NextResponse.json({ 
+          message: 'Credits updated successfully but failed to log payment', 
+          paymentError: paymentLogError.message,
+          newCredits: updatedCredits,
+          creditsAdded: creditsToAdd
+        });
+      }
+      
+      console.log("✅ Payment logged successfully");
+    } catch (paymentInsertError) {
+      console.error("❌ Exception logging payment:", paymentInsertError);
+      // Continue since credits were added
       return NextResponse.json({ 
         message: 'Credits updated successfully but failed to log payment', 
-        paymentError: paymentLogError.message,
+        paymentError: paymentInsertError.message,
         newCredits: updatedCredits,
         creditsAdded: creditsToAdd
       });
-    } else {
-      console.log("✅ Payment logged successfully", paymentData);
     }
 
     // Return success message with updated credits
