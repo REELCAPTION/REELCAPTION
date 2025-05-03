@@ -29,7 +29,7 @@ export default function Footer() {
                 <Link href="/" className="inline-block mb-2">
                   <motion.span 
                     whileHover={{ scale: 1.02 }}
-                    className="text-2xl font-black bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent"
+                    className="text-2xl font-black text-white bg-clip-text"
                   >
                     REELCAPTION
                   </motion.span>

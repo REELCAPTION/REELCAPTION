@@ -33,11 +33,9 @@ export default function Header() {
 
             {/* REELCAPTION Text */}
             <div className="flex flex-col">
-              <span className="text-xl sm:text-2xl md:text-3xl font-black bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+              <span className="text-xl sm:text-2xl md:text-3xl font-black text-white bg-clip-text">
                 REELCAPTION
               </span>
-              {/* Optional underline effect */}
-              <div className="h-0.5 w-0 group-hover:w-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"></div>
             </div>
           </motion.div>
         </Link>
