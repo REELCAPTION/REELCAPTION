@@ -34,13 +34,13 @@ export async function POST(req) {
 
     // Create Razorpay order
     const order = await razorpay.orders.create({
-      amount: amount * 100, // Amount in paise
-      currency: 'INR', // Currency INR
-      receipt: `receipt_order_${Date.now()}`, // Unique receipt
+      amount: amount * 100,
+      currency: 'INR',
+      receipt: `receipt_order_${Date.now()}`,
       notes: {
-        userId: user.id, // Store user ID for reference
-        email: user.email, // Store user email for reference
-        credits: planCredits, // Store credits being purchased
+        userId: user.id,
+        email: user.email,
+        credits: planCredits?.toString() || "0", // ← store credits
       },
     });
 

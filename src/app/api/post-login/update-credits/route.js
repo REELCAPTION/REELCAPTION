@@ -16,39 +16,42 @@ const razorpay = new Razorpay({
 
 export async function POST(req) {
   try {
-    // Parse incoming request body to extract payment data
     const { provider, paymentId, orderId } = await req.json();
     const token = req.headers.get('Authorization')?.replace('Bearer ', '');
 
-    // Validate the required parameters
     if (!provider || !paymentId || !orderId) {
       return NextResponse.json({ error: 'Missing data' }, { status: 400 });
     }
 
-    // Retrieve user from Supabase using the authorization token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Razorpay Payment Verification
+    let creditsToAdd = 0;
     let amount = 0;
+
     if (provider === 'razorpay') {
       const payment = await razorpay.payments.fetch(paymentId);
+
       if (!payment || payment.status !== 'captured' || payment.order_id !== orderId) {
         return NextResponse.json({ error: 'Invalid or failed Razorpay payment' }, { status: 400 });
       }
-      amount = payment.amount / 100; // Convert paise to INR
+
+      amount = payment.amount / 100; // Convert from paise to INR
+
+      if (amount === 199) creditsToAdd = 100;
+      else if (amount === 399) creditsToAdd = 300;
+      else if (amount === 999) creditsToAdd = 800;
+      else return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    } else {
+      return NextResponse.json({ error: 'Unsupported provider' }, { status: 400 });
     }
 
-    // Determine credits to add based on the payment amount
-    let creditsToAdd = 0;
-    if (amount === 50) creditsToAdd = 50;
-    else if (amount === 100) creditsToAdd = 150;
-    else if (amount === 500) creditsToAdd = 600;
-    else return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
-
-    // Retrieve current credits from the user's profile
     const { data: profileData, error: profileErr } = await supabase
       .from('users')
       .select('credits')
@@ -59,10 +62,8 @@ export async function POST(req) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Calculate updated credits
     const updatedCredits = (profileData.credits || 0) + creditsToAdd;
 
-    // Update user's credits in Supabase
     const { error: updateError } = await supabase
       .from('users')
       .update({ credits: updatedCredits })
@@ -72,7 +73,6 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Failed to update credits' }, { status: 500 });
     }
 
-    // Log the payment details in the payment history table
     await supabase.from('payment').insert({
       user_id: user.id,
       provider,
@@ -83,7 +83,6 @@ export async function POST(req) {
       order_id: orderId,
     });
 
-    // Respond with a success message and updated credits
     return NextResponse.json({ message: 'Credits updated', newCredits: updatedCredits });
   } catch (err) {
     console.error('Credit update error:', err);

@@ -114,8 +114,8 @@ function PricingCard({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ amount }),
-    });
+      body: JSON.stringify({ amount, planCredits: parseInt(credits) }), // ADD THIS
+    });    
 
     if (!response.ok) {
       alert('Failed to create order');
@@ -154,7 +154,7 @@ function PricingCard({
             paymentId: response.razorpay_payment_id,
             orderId: response.razorpay_order_id,
           }),
-        });
+        });        
 
         alert('Payment Successful! Credits added.');
       },
