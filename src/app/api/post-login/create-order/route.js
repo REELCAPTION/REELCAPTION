@@ -25,7 +25,6 @@ export async function POST(req) {
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      // Log error if user not found or authentication fails
       console.error("❌ Unauthorized: User not found or token expired");
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -34,17 +33,16 @@ export async function POST(req) {
 
     // Create Razorpay order
     const order = await razorpay.orders.create({
-      amount: amount * 100,
+      amount: amount * 100, // Convert to paise
       currency: 'INR',
       receipt: `receipt_order_${Date.now()}`,
       notes: {
         userId: user.id,
         email: user.email,
-        credits: planCredits?.toString() || "0", // ← store credits
+        credits: planCredits?.toString() || "0", // store credits
       },
     });
 
-    // Log the Razorpay order response for debugging
     console.log("Razorpay Order Response:", order);
 
     // Return order data to the frontend
@@ -56,7 +54,6 @@ export async function POST(req) {
       paymentUrl: `https://checkout.razorpay.com/v1/checkout/embedded?order_id=${order.id}`,
     });
   } catch (err) {
-    // Log any errors that occur during order creation
     console.error("❌ Error in create-order API:", err);
     return NextResponse.json({ error: "Server error", details: err.message }, { status: 500 });
   }

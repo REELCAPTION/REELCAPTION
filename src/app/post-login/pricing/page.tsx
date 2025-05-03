@@ -48,9 +48,9 @@ export default function PricingPage() {
           <PricingCard
             title="Starter Plan"
             description="Best for casual creators"
-            price="₹10"
+            price="₹1"
             credits="50 credits"
-            amount={10}
+            amount={1}
             buttonText="Buy Now"
             buttonClass="bg-gray-800 hover:bg-gray-700 text-white"
           />
@@ -115,7 +115,7 @@ function PricingCard({
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ amount, planCredits: parseInt(credits) }), // ADD THIS
-    });    
+    });
 
     if (!response.ok) {
       alert('Failed to create order');
@@ -143,7 +143,7 @@ function PricingCard({
       description: title,
       order_id: order.orderId,
       handler: async function (response: RazorpayResponse) {
-        await fetch('/api/post-login/update-credits', {
+        const paymentResponse = await fetch('/api/post-login/update-credits', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -154,7 +154,14 @@ function PricingCard({
             paymentId: response.razorpay_payment_id,
             orderId: response.razorpay_order_id,
           }),
-        });        
+        });
+
+        const paymentData = await paymentResponse.json();
+        
+        if (paymentData.error) {
+          alert('Failed to update credits');
+          return;
+        }
 
         alert('Payment Successful! Credits added.');
       },
