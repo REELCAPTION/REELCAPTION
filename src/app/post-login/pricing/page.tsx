@@ -5,13 +5,14 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Check } from 'lucide-react';
+import { Check, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface PricingCardProps {
   title: string;
   description: string;
   price: string;
-  credits: number; // Changed to number for clarity
+  credits: number; 
   buttonText: string;
   buttonClass: string;
   amount: number;
@@ -24,6 +25,8 @@ interface RazorpayResponse {
 }
 
 export default function PricingPage() {
+  const router = useRouter();
+  
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -34,10 +37,23 @@ export default function PricingPage() {
     };
   }, []);
 
+  const handleBack = () => {
+    router.back();
+  };
+
   return (
     <div className="min-h-screen bg-black">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
+      <div className="container mx-auto px-4 py-16 relative">
+        {/* Back Button */}
+        <Button 
+          onClick={handleBack} 
+          className="absolute top-4 left-4 flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        
+        <div className="text-center mb-16 pt-8">
           <h1 className="text-4xl font-bold mb-4 text-white">Choose Your Credits Plan</h1>
           <p className="text-gray-400 max-w-2xl mx-auto">
             Select a plan that fits your content creation needs. Every plan gives you access to powerful AI tools designed to boost your social media.
@@ -47,29 +63,29 @@ export default function PricingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-16">
           <PricingCard
             title="Starter Plan"
-            description="Best for casual creators"
-            price="₹1"
-            credits={50}
-            amount={1}
+            description="Best for light users, occasional creators"
+            price="₹99"
+            credits={60}
+            amount={99}
             buttonText="Buy Now"
             buttonClass="bg-gray-800 hover:bg-gray-700 text-white"
           />
           <PricingCard
             title="Pro Plan"
-            description="Perfect for regular creators"
-            price="₹100"
-            credits={150}
-            amount={100}
+            description="Perfect for active creators"
+            price="₹199"
+            credits={200}
+            amount={199}
             buttonText="Buy Now"
             buttonClass="bg-blue-600 hover:bg-blue-500 text-white"
             highlight
           />
           <PricingCard
             title="Business Plan"
-            description="For teams and agencies"
-            price="₹999"
+            description="For power users or agencies"
+            price="₹499"
             credits={600}
-            amount={999} // Changed to match the price shown
+            amount={499}
             buttonText="Buy Now"
             buttonClass="bg-gray-800 hover:bg-gray-700 text-white"
           />
@@ -122,7 +138,7 @@ function PricingCard({
         body: JSON.stringify({ 
           amount, 
           planName: title,
-          planCredits: credits // Now passing as a number
+          planCredits: credits 
         }),
       });
 
@@ -154,7 +170,6 @@ function PricingCard({
         description: `${title} - ${credits} credits`,
         order_id: order.orderId,
         handler: async function (response: RazorpayResponse) {
-          // REPLACE THIS ENTIRE HANDLER FUNCTION WITH THE DEBUG VERSION BELOW
           try {
             console.log("Payment successful, updating credits...");
             console.log("Payment response:", {
@@ -244,7 +259,7 @@ function PricingCard({
         <p className="text-gray-400 mb-6">{description}</p>
         <div className="mb-6">
           <span className="text-4xl font-bold text-white">{price}</span>
-          <span className="text-gray-400">/month</span>
+          <span className="text-gray-400"></span>
         </div>
         <div className={`rounded-lg p-4 mb-8 ${highlight ? 'bg-blue-900/30' : 'bg-gray-800'}`}>
           <p className="text-lg font-semibold text-center text-white">Includes {credits} credits</p>
@@ -285,10 +300,10 @@ function ToolList() {
 function FAQ() {
   const faqs = [
     { q: 'What are credits?', a: 'Credits are used to run actions within the platform. Each tool consumes a certain number of credits depending on usage and settings (e.g., premium generation).' },
-    { q: 'How long do credits last?', a: 'Credits are valid for the duration of your plan subscription or until they are used up, whichever comes first. They typically reset at the start of your next billing cycle.' },
-    { q: 'Can I upgrade or downgrade my plan?', a: 'Yes, you can usually upgrade or downgrade your plan at any time. Changes typically take effect at the start of your next billing cycle. Check specific terms.' },
-    { q: 'What payment methods do you accept?', a: 'We accept major credit cards, debit cards, UPI, and net banking via our secure payment gateway (e.g., Stripe, Razorpay).' },
-    { q: 'Do you offer refunds?', a: 'We generally do not offer refunds for partially used plans or unused credits. We might offer a limited money-back guarantee for initial purchases under specific conditions. Please refer to our refund policy.' },
+    { q: 'How long do credits last?', a: 'Credits are valid until they are used up. They do not expire once purchased.' },
+    { q: 'Can I upgrade or downgrade my plan?', a: 'Yes, you can purchase any plan at any time to add more credits to your account.' },
+    { q: 'What payment methods do you accept?', a: 'We accept major credit cards, debit cards, UPI, and net banking via our secure payment gateway (Razorpay).' },
+    { q: 'Do you offer refunds?', a: 'We generally do not offer refunds for purchased credits. Please refer to our refund policy for more information.' },
   ];
 
   return faqs.map((item, idx) => (

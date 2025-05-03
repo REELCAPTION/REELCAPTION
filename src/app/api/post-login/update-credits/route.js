@@ -69,24 +69,32 @@ export async function POST(req) {
         amount = payment.amount / 100; // Convert from paise to INR
         console.log("✅ Payment amount:", amount);
 
-        // Get order to check for planName from notes
+        // Get order to check for planName and credits from notes
         try {
           const order = await razorpay.orders.fetch(orderId);
           if (order && order.notes) {
             planName = order.notes.planName || "";
+            // Try to get credits from order notes first
+            const notesCredits = parseInt(order.notes.credits);
+            if (!isNaN(notesCredits) && notesCredits > 0) {
+              creditsToAdd = notesCredits;
+              console.log("✅ Credits from order notes:", creditsToAdd);
+            }
           }
         } catch (orderError) {
           console.warn("⚠️ Unable to fetch order details:", orderError);
           // Continue with the process even if we can't get the plan name
         }
 
-        // Determine credits to add based on the amount
-        if (amount === 1) creditsToAdd = 50;
-        else if (amount === 100) creditsToAdd = 150;
-        else if (amount === 999) creditsToAdd = 600;
-        else {
-          console.error("❌ Invalid amount:", amount);
-          return NextResponse.json({ error: `Invalid amount: ${amount}` }, { status: 400 });
+        // If credits weren't found in notes, determine them based on the amount
+        if (creditsToAdd === 0) {
+          if (amount === 99) creditsToAdd = 60;
+          else if (amount === 199) creditsToAdd = 200;
+          else if (amount === 499) creditsToAdd = 600;
+          else {
+            console.error("❌ Invalid amount:", amount);
+            return NextResponse.json({ error: `Invalid amount: ${amount}` }, { status: 400 });
+          }
         }
         
         console.log("✅ Credits to add:", creditsToAdd);
@@ -127,7 +135,7 @@ export async function POST(req) {
         
         console.log("✅ User profile created with initial credits:", creditsToAdd);
         
-        // Log the payment - FIRST ISSUE FIX: Check if payment table exists
+        // Log the payment - with improved error handling
         try {
           // Try to log the payment
           const { error: paymentLogError } = await supabase
