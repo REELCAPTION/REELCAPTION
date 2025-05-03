@@ -40,9 +40,9 @@ export async function POST(req) {
 
     // 🧮 Credits Logic
     let creditsToAdd = 0;
-    if (amount === 199) creditsToAdd = 100;
-    else if (amount === 399) creditsToAdd = 300;
-    else if (amount === 999) creditsToAdd = 800;
+    if (amount === 50) creditsToAdd = 50;
+    else if (amount === 100) creditsToAdd = 150;
+    else if (amount === 500) creditsToAdd = 600;
     else return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
 
     // 🔁 Get current credits

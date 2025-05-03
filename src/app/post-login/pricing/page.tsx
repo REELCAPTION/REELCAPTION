@@ -48,18 +48,18 @@ export default function PricingPage() {
           <PricingCard
             title="Starter Plan"
             description="Best for casual creators"
-            price="₹199"
-            credits="100 credits"
-            amount={199}
+            price="₹50"
+            credits="50 credits"
+            amount={50}
             buttonText="Buy Now"
             buttonClass="bg-gray-800 hover:bg-gray-700 text-white"
           />
           <PricingCard
             title="Pro Plan"
             description="Perfect for regular creators"
-            price="₹399"
-            credits="300 credits"
-            amount={399}
+            price="₹100"
+            credits="150 credits"
+            amount={100}
             buttonText="Buy Now"
             buttonClass="bg-blue-600 hover:bg-blue-500 text-white"
             highlight
@@ -68,8 +68,8 @@ export default function PricingPage() {
             title="Business Plan"
             description="For teams and agencies"
             price="₹999"
-            credits="800 credits"
-            amount={999}
+            credits="600 credits"
+            amount={500}
             buttonText="Buy Now"
             buttonClass="bg-gray-800 hover:bg-gray-700 text-white"
           />
